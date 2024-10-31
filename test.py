@@ -16,7 +16,7 @@ import itertools
 } """
 
 parameters = {
-    'T': 5,
+    'T': 20,
     'M_HP_max': 5,
     'M_A_max': 10,
     'M_B_max': 10,
@@ -26,7 +26,8 @@ parameters = {
     'T_I': 5,
     'E_A': 8,
     'E_B': 8,
-    'E_I': 8
+    'E_I': 8,
+    'Beta': 0.95
 }
 
 actions = {
@@ -62,24 +63,39 @@ rewards = {
 }
 
 
-def is_evolved(current_state, action):
+def is_evolved(current_state, action, t=parameters['T']):
     new_state = {
-        'At': min(current_state[1] + action[2], parameters['M_A_max']),  # 攻撃力の増減
-        'Bl': min(current_state[2] + action[3], parameters['M_B_max']),  # 防御力の増減
-        'In': min(current_state[3] + action[4], parameters['M_I_max'])  # 知力の増減
+        'At': min(current_state[1] + action[3], parameters['M_A_max']),  # 攻撃力の増減
+        'Bl': min(current_state[2] + action[4], parameters['M_B_max']),  # 防御力の増減
+        'In': min(current_state[3] + action[5], parameters['M_I_max'])  # 知力の増減
     }
     
+    next_state = list(current_state)
+    next_state[0] = max(current_state[0] - action[0], 0)
+    next_state[1] = new_state['At']
+    next_state[2] = new_state['Bl']
+    next_state[3] = new_state['In']
+    
     if not (new_state['At'] >= parameters['T_A'] and new_state['Bl'] >= parameters['T_B'] and new_state['In'] >= parameters['T_I']):
-        return 0
+        return [0, tuple(next_state)]
     
     if (new_state['In'] >= parameters['E_I']):
-        return 3
+        next_state[4] = 3
+        next_state[5] = (t + 1) % 2
+        
+        return [3, tuple(next_state)]
     elif (new_state['Bl'] >= parameters['E_B']):
-        return 2
+        next_state[4] = 2
+        next_state[5] = (t + 1) % 2
+        
+        return [2, tuple(next_state)]
     elif (new_state['At'] >= parameters['E_A']):
-        return 1
+        next_state[4] = 1
+        next_state[5] = (t + 1) % 2
+        
+        return [1, tuple(next_state)]
     else:
-        return 0
+        return [0, tuple(next_state)]
     
 
 # 状態空間を生成
@@ -95,21 +111,22 @@ for state in states[-1]:
         
         success_rate = success_rate / 100
         
-        if HP < action[0]:continue
+        if HP < stamina_consumption:continue
         
         if Evo == 0:
             if 1 <= i < 16:
-                if is_evolved(state, action) == 1:
+                evolved_state, next_state = is_evolved(state, action)
+                if evolved_state == 1:
                     if parameters['T'] % 2 != 0:
                         states[-1][state] = max(states[-1][state], rewards['RmorningA'] * success_rate)
                     else:
                         states[-1][state] = max(states[-1][state], rewards['RnightA'] * success_rate)
-                elif is_evolved(state, action) == 2:
+                elif evolved_state == 2:
                     if parameters['T'] % 2 != 0:
                         states[-1][state] = max(states[-1][state], rewards['RmorningB'] * success_rate)
                     else:
                         states[-1][state] = max(states[-1][state], rewards['RnightB'] * success_rate)
-                elif is_evolved(state, action) == 3:
+                elif evolved_state == 3:
                     if parameters['T'] % 2 != 0:
                         states[-1][state] = max(states[-1][state], rewards['RmorningC'] * success_rate)
                     else:
@@ -117,15 +134,56 @@ for state in states[-1]:
                     
 # t期目の処理
 for t in range(parameters['T'] - 1, 0, -1):
+    print(f"{t}期目")
     for state in states[t]:
         HP, At, Bl, In, Evo, MN = state
+        
         for i, action in actions.items():
             stamina_consumption, success_rate, delta_stamina, delta_attack, delta_defense, delta_intelligence = action
             
             success_rate = success_rate / 100
             
-            if HP < action[0]:continue
+            if HP < stamina_consumption:continue
             
+            
+            if 1 <= i < 16:
+                if Evo == 0:
+                    evolved_state, next_state = is_evolved(state, action)
+                    if evolved_state == 1:
+                        if parameters['T'] % 2 != 0:
+                            states[t][state] = max(states[t][state], success_rate * (rewards['RmorningA'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state]))
+                        else:
+                            states[t][state] = max(states[t][state], success_rate * (rewards['RnightA'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state]))
+                    elif evolved_state == 2:
+                        if parameters['T'] % 2 != 0:
+                            states[t][state] = max(states[t][state], success_rate * (rewards['RmorningB'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state]))
+                        else:
+                            states[t][state] = max(states[t][state], success_rate * (rewards['RnightB'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state]))
+                    elif evolved_state == 3:
+                        if parameters['T'] % 2 != 0:
+                            states[t][state] = max(states[t][state], success_rate * (rewards['RmorningC'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state]))
+                        else:
+                            states[t][state] = max(states[t][state], success_rate * (rewards['RnightC'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state]))
+                    elif evolved_state == 0:
+                        if parameters['T'] % 2 != 0:
+                            states[t][state] = max(states[t][state], success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state]))
+                        else:
+                            states[t][state] = max(states[t][state], success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state]))
+                else:
+                    next_state = (min(HP + delta_stamina, parameters['M_HP_max']), 
+                                  min(At + delta_stamina, parameters['M_A_max']), 
+                                  min(Bl + delta_stamina, parameters['M_B_max']), 
+                                  min(In + delta_stamina, parameters['M_I_max']), 
+                                  Evo, MN)
+
+                    states[t][state] = max(states[t][state], success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state]))
+
+            elif 16 <= i < 19:
+                next_state = (min(HP + delta_stamina, parameters['M_HP_max']), At, Bl, In, Evo, MN)
+                states[t][state] = max(states[t][state], success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state]))
+                
+            elif i == 19:
+                states[t][state] = max(states[t][state], parameters['Beta'] * states[t + 1][state])
             
     
-print(123)
+print(states[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
