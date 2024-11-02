@@ -78,7 +78,7 @@ actions = {
 }
 
 rewards = {
-    'RmorningA': 3000,
+    'RmorningA': 300,
     'RmorningB': 100,
     'RmorningC': 100,
     'RnightA': 50,
@@ -132,7 +132,7 @@ policies = [{(HP, At, Bl, In, Evo, MN): None for HP, At, Bl, In, Evo, MN in iter
     range(parameters['M_I_max'] + 1), range(4), range(3))} for _ in range(parameters['T'] + 1)]
 
 # 特定の行動パスを指定する
-actions_sequence = [7, 6, 14, 7, 6, 14, 7, 6, 14, 7]
+actions_sequence = [7, 6, 17, 7, 6, 17, 7, 6, 17, 7]
 
 # T期目の処理
 for state in states[-1]:
