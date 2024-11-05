@@ -135,6 +135,16 @@ policies = [{(HP, At, Bl, In, Evo, MN): None for HP, At, Bl, In, Evo, MN in iter
     range(parameters['M_HP_max'] + 1), range(parameters['M_A_max'] + 1), range(parameters['M_B_max'] + 1),
     range(parameters['M_I_max'] + 1), range(4), range(3))} for _ in range(parameters['T'] + 1)]
 
+# 特定の行動パスを指定する
+actions_sequence = [[15, 18, 15, 18, 15, 18, 15, 18, 15, 18],
+                    [15, 18, 15, 18, 15, 18, 4, 18, 4, 18],
+                    [7, 6, 17, 7, 6, 17, 7, 6, 17, 7],
+                    [19, 7, 6, 17, 7, 6, 17, 7, 6, 17],
+                    [7, 6, 17, 19, 7, 6, 17, 19, 7, 6,],
+                    [18, 18, 18, 18, 18, 18, 18, 18, 18, 18]]
+
+actions_sequence_index = 4
+
 print(f"{parameters['T']}期目")
 # T期目の処理
 for state in states[-1]:
@@ -155,38 +165,38 @@ for state in states[-1]:
     states[-1][state] = rewards['Rnothing']
     policies[-1][state] = 19
 
-    for i, action in actions.items():
-        stamina_consumption, success_rate, delta_stamina, delta_attack, delta_defense, delta_intelligence = action
-        
-        success_rate = success_rate / 100
-        
-        if HP < stamina_consumption:continue
-        
-        if Evo == 0:
-            if 1 <= i < 16:
-                evolved_state, next_state = is_evolved(state, action)
-                if evolved_state == 1:
-                    if parameters['T'] % 2 != 0:
-                        new_value = rewards['RmorningA'] * success_rate
-                    else:
-                        new_value = rewards['RnightA'] * success_rate
-                elif evolved_state == 2:
-                    if parameters['T'] % 2 != 0:
-                        new_value = rewards['RmorningB'] * success_rate
-                    else:
-                        new_value = rewards['RnightB'] * success_rate
-                elif evolved_state == 3:
-                    if parameters['T'] % 2 != 0:
-                        new_value = rewards['RmorningC'] * success_rate
-                    else:
-                        new_value = rewards['RnightC'] * success_rate
-                elif evolved_state == 0:
-                    new_value = 0
+    i, action = actions_sequence[actions_sequence_index][-1], actions[actions_sequence[actions_sequence_index][-1]]
+    stamina_consumption, success_rate, delta_stamina, delta_attack, delta_defense, delta_intelligence = action
+    
+    success_rate = success_rate / 100
+    
+    if HP < stamina_consumption:continue
+    
+    if Evo == 0:
+        if 1 <= i < 16:
+            evolved_state, next_state = is_evolved(state, action)
+            if evolved_state == 1:
+                if parameters['T'] % 2 != 0:
+                    new_value = rewards['RmorningA'] * success_rate
+                else:
+                    new_value = rewards['RnightA'] * success_rate
+            elif evolved_state == 2:
+                if parameters['T'] % 2 != 0:
+                    new_value = rewards['RmorningB'] * success_rate
+                else:
+                    new_value = rewards['RnightB'] * success_rate
+            elif evolved_state == 3:
+                if parameters['T'] % 2 != 0:
+                    new_value = rewards['RmorningC'] * success_rate
+                else:
+                    new_value = rewards['RnightC'] * success_rate
+            elif evolved_state == 0:
+                new_value = 0
 
-                # 利得が最大であればポリシーと利得を更新
-                if new_value > states[-1][state]:
-                    states[-1][state] = new_value
-                    policies[-1][state] = i  # 最適行動を記録
+            # 利得が最大であればポリシーと利得を更新
+            if new_value > states[-1][state]:
+                states[-1][state] = new_value
+                policies[-1][state] = i  # 最適行動を記録
                     
 # t期目の処理
 for t in range(parameters['T'] - 1, 0, -1):
@@ -206,56 +216,56 @@ for t in range(parameters['T'] - 1, 0, -1):
         if not (At >= parameters['T_A'] and Bl >= parameters['T_B'] and In >= parameters['E_I']) and Evo == 3:
             continue
         
-        for i, action in actions.items():
-            stamina_consumption, success_rate, delta_stamina, delta_attack, delta_defense, delta_intelligence = action
-            
-            success_rate = success_rate / 100
-            
-            if HP < stamina_consumption:continue
-            
-            if 1 <= i < 16:
-                if Evo == 0:
-                    evolved_state, next_state = is_evolved(state, action, t)
-                    if evolved_state == 1:
-                        if t % 2 != 0:
-                            new_value = success_rate * (rewards['RmorningA'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
-                        else:
-                            new_value = success_rate * (rewards['RnightA'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
-                    elif evolved_state == 2:
-                        if t % 2 != 0:
-                            new_value = success_rate * (rewards['RmorningB'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
-                        else:
-                            new_value = success_rate * (rewards['RnightB'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
-                    elif evolved_state == 3:
-                        if t % 2 != 0:
-                            new_value = success_rate * (rewards['RmorningC'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
-                        else:
-                            new_value = success_rate * (rewards['RnightC'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
-                    elif evolved_state == 0:
-                        if t % 2 != 0:
-                            new_value = success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
-                        else:
-                            new_value = success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
-                else:
-                    next_state = (min(HP + delta_stamina, parameters['M_HP_max']), 
-                                  min(At + delta_stamina, parameters['M_A_max']), 
-                                  min(Bl + delta_stamina, parameters['M_B_max']), 
-                                  min(In + delta_stamina, parameters['M_I_max']), 
-                                  Evo, MN)
+        i, action = actions_sequence[actions_sequence_index][t - 1], actions[actions_sequence[actions_sequence_index][t - 1]]
+        stamina_consumption, success_rate, delta_stamina, delta_attack, delta_defense, delta_intelligence = action
+        
+        success_rate = success_rate / 100
+        
+        if HP < stamina_consumption:continue
+        
+        if 1 <= i < 16:
+            if Evo == 0:
+                evolved_state, next_state = is_evolved(state, action, t)
+                if evolved_state == 1:
+                    if t % 2 != 0:
+                        new_value = success_rate * (rewards['RmorningA'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
+                    else:
+                        new_value = success_rate * (rewards['RnightA'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
+                elif evolved_state == 2:
+                    if t % 2 != 0:
+                        new_value = success_rate * (rewards['RmorningB'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
+                    else:
+                        new_value = success_rate * (rewards['RnightB'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
+                elif evolved_state == 3:
+                    if t % 2 != 0:
+                        new_value = success_rate * (rewards['RmorningC'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
+                    else:
+                        new_value = success_rate * (rewards['RnightC'] + parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
+                elif evolved_state == 0:
+                    if t % 2 != 0:
+                        new_value = success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
+                    else:
+                        new_value = success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
+            else:
+                next_state = (min(HP + delta_stamina, parameters['M_HP_max']), 
+                                min(At + delta_stamina, parameters['M_A_max']), 
+                                min(Bl + delta_stamina, parameters['M_B_max']), 
+                                min(In + delta_stamina, parameters['M_I_max']), 
+                                Evo, MN)
 
-                    new_value = success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
-
-            elif 16 <= i < 19:
-                next_state = (min(HP + delta_stamina, parameters['M_HP_max']), At, Bl, In, Evo, MN)
                 new_value = success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
-                
-            elif i == 19:
-                new_value = rewards['Rnothing'] + parameters['Beta'] * states[t + 1][state]
-                
-            # 利得が最大であればポリシーと利得を更新
-            if new_value > states[t][state]:
-                states[t][state] = new_value
-                policies[t][state] = i  # 最適行動を記録
+
+        elif 16 <= i < 19:
+            next_state = (min(HP + delta_stamina, parameters['M_HP_max']), At, Bl, In, Evo, MN)
+            new_value = success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
+            
+        elif i == 19:
+            new_value = rewards['Rnothing'] + parameters['Beta'] * states[t + 1][state]
+            
+        # 利得が最大であればポリシーと利得を更新
+        if new_value > states[t][state]:
+            states[t][state] = new_value
+            policies[t][state] = i  # 最適行動を記録
             
     
 print(states[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
@@ -264,6 +274,3 @@ print(states[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
 print(policies[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
 # print(states[1][(parameters['M_HP_max'], 7, 8, 9, 0, 0)])
 # print(policies[7][(parameters['M_HP_max'], 7, 7, 7, 0, 0)])
-
-# print(states[6][(parameters['M_HP_max'], 9, 7, 7, 1, 1)])
-# print(policies[6][(parameters['M_HP_max'], 9, 7, 7, 1, 1)])
