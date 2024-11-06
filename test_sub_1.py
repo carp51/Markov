@@ -135,6 +135,16 @@ policies = [{(HP, At, Bl, In, Evo, MN): None for HP, At, Bl, In, Evo, MN in iter
     range(parameters['M_HP_max'] + 1), range(parameters['M_A_max'] + 1), range(parameters['M_B_max'] + 1),
     range(parameters['M_I_max'] + 1), range(4), range(3))} for _ in range(parameters['T'] + 1)]
 
+# 特定の行動パスを指定する
+actions_sequence = [[[15, 15, 19, 1,2,3], [15, 18, 19, 1,2,3], [15, 18, 19, 1,2,3], [15, 18, 19, 1,2,3], [15, 18, 19, 1,2,3], [15, 18, 19, 1,2,3], [15, 18, 19, 1,2,3], [15, 18, 19, 1,2,3], [15, 18, 19, 1,2,3], [15, 18, 19, 1,2,3]],
+                    [15, 18, 15, 18, 15, 18, 4, 18, 4, 18],
+                    [7, 6, 17, 7, 6, 17, 7, 6, 17, 7],
+                    [19, 7, 6, 17, 7, 6, 17, 7, 6, 17],
+                    [7, 6, 17, 19, 7, 6, 17, 19, 7, 6,],
+                    [18, 18, 18, 18, 18, 18, 18, 18, 18, 18]]
+
+actions_sequence_index = 0
+
 print(f"{parameters['T']}期目")
 # T期目の処理
 for state in states[-1]:
@@ -155,7 +165,8 @@ for state in states[-1]:
     states[-1][state] = rewards['Rnothing']
     policies[-1][state] = 19
 
-    for i, action in actions.items():
+    for j in range(len(actions_sequence[actions_sequence_index][-1])):
+        i, action = actions_sequence[actions_sequence_index][-1][j], actions[actions_sequence[actions_sequence_index][-1][j]]
         stamina_consumption, success_rate, delta_stamina, delta_attack, delta_defense, delta_intelligence = action
         
         success_rate = success_rate / 100
@@ -205,8 +216,9 @@ for t in range(parameters['T'] - 1, 0, -1):
         
         if not (At >= parameters['T_A'] and Bl >= parameters['T_B'] and In >= parameters['E_I']) and Evo == 3:
             continue
-        
-        for i, action in actions.items():
+
+        for j in range(len(actions_sequence[actions_sequence_index][t])):
+            i, action = actions_sequence[actions_sequence_index][t][j], actions[actions_sequence[actions_sequence_index][t][j]]
             stamina_consumption, success_rate, delta_stamina, delta_attack, delta_defense, delta_intelligence = action
             
             success_rate = success_rate / 100
@@ -238,10 +250,10 @@ for t in range(parameters['T'] - 1, 0, -1):
                             new_value = success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
                 else:
                     next_state = (min(HP + delta_stamina, parameters['M_HP_max']), 
-                                  min(At + delta_stamina, parameters['M_A_max']), 
-                                  min(Bl + delta_stamina, parameters['M_B_max']), 
-                                  min(In + delta_stamina, parameters['M_I_max']), 
-                                  Evo, MN)
+                                    min(At + delta_stamina, parameters['M_A_max']), 
+                                    min(Bl + delta_stamina, parameters['M_B_max']), 
+                                    min(In + delta_stamina, parameters['M_I_max']), 
+                                    Evo, MN)
 
                     new_value = success_rate * (parameters['Beta'] * states[t + 1][next_state]) + (1 - success_rate) * (parameters['Beta'] * states[t + 1][state])
 
@@ -262,8 +274,5 @@ print(states[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
 # for p in policies:
 #     print(p)
 print(policies[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
-# print(states[1][(parameters['M_HP_max'], 7, 8, 9, 0, 0)])
-# print(policies[7][(parameters['M_HP_max'], 7, 7, 7, 0, 0)])
-
-print(states[6][(parameters['M_HP_max'], 7, 7, 7, 0, 0)])
-print(policies[6][(parameters['M_HP_max'], 7, 7, 7, 0, 0)])
+print(states[1][(parameters['M_HP_max'], 7, 8, 9, 0, 0)])
+print(policies[7][(parameters['M_HP_max'], 7, 7, 7, 0, 0)])

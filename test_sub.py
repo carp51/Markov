@@ -85,7 +85,7 @@ rewards = {
     'RnightA': 100,
     'RnightB': 20,
     'RnightC': 20,
-    'Rnothing': 10
+    'Rnothing': 1
 }
 
 
@@ -272,5 +272,5 @@ print(states[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
 # for p in policies:
 #     print(p)
 print(policies[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
-# print(states[1][(parameters['M_HP_max'], 7, 8, 9, 0, 0)])
-# print(policies[7][(parameters['M_HP_max'], 7, 7, 7, 0, 0)])
+print(states[1][(parameters['M_HP_max'], 7, 8, 9, 0, 0)])
+print(policies[7][(parameters['M_HP_max'], 7, 7, 7, 0, 0)])
