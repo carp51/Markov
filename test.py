@@ -84,12 +84,24 @@ def is_evolved(current_state, action, t=parameters['T']):
     
 
 # 状態空間を生成
-states = [{ (HP, At, Bl, In, Evo, MN): 0 for HP, At, Bl, In, Evo, MN in itertools.product(range(parameters['M_HP_max'] + 1), range(parameters['M_A_max'] + 1), range(parameters['M_B_max'] + 1), range(parameters['M_I_max'] + 1), range(4), range(2))}  for _ in range(parameters['T'] + 1)]
+states = [{ (HP, At, Bl, In, Evo, MN): 0 
+            for HP, At, Bl, In, Evo, MN in itertools.product(range(parameters['M_HP_max'] + 1), 
+                                                            range(parameters['M_A_max'] + 1), 
+                                                            range(parameters['M_B_max'] + 1), 
+                                                            range(parameters['M_I_max'] + 1), 
+                                                            range(4), 
+                                                            range(2))}  
+            for _ in range(parameters['T'] + 1)]
 
-# 最適行動を記録するためのポリシー辞書
-policies = [{(HP, At, Bl, In, Evo, MN): None for HP, At, Bl, In, Evo, MN in itertools.product(
-    range(parameters['M_HP_max'] + 1), range(parameters['M_A_max'] + 1), range(parameters['M_B_max'] + 1),
-    range(parameters['M_I_max'] + 1), range(4), range(2))} for _ in range(parameters['T'] + 1)]
+# 最適行動を記録するための辞書
+policies = [{(HP, At, Bl, In, Evo, MN): None 
+            for HP, At, Bl, In, Evo, MN in itertools.product(range(parameters['M_HP_max'] + 1), 
+                                                              range(parameters['M_A_max'] + 1), 
+                                                              range(parameters['M_B_max'] + 1),
+                                                              range(parameters['M_I_max'] + 1), 
+                                                              range(4), 
+                                                              range(2))} 
+            for _ in range(parameters['T'] + 1)]
 
 print(f"{parameters['T']}期目")
 # T期目の処理
@@ -213,5 +225,5 @@ for t in range(parameters['T'] - 1, 0, -1):
 print(states[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
 print(policies[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
 
-print(states[8][(0, 6, 6, 6, 0, 0)])
-print(policies[8][(0, 6, 6, 6, 0, 0)])
+print(states[8][(5, 5, 3, 2, 0, 0)])
+print(policies[8][(5, 5, 3, 2, 0, 0)])
