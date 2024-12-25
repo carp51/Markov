@@ -17,7 +17,7 @@ parameters = {
 }
 
 actions = {
-    # 攻撃・防御・賢さを上げる特訓
+    # 特訓
     1: [1, 0.85, 0, 2, 0, 0],   # a1: 攻撃力+2
     2: [1, 0.80, 0, 0, 2, 0],   # a2: 防御力+2
     3: [1, 0.90, 0, 0, 0, 2],   # a3: 賢さ+2
@@ -27,10 +27,12 @@ actions = {
     7: [5, 0.6, 0, 2, 2, 2],   # a7: 攻撃・防御・賢さすべて+2
     8: [5, 0.3, 0, 4, 4, 4],    # a8: 攻撃・防御・賢さすべて+4
 
-    # 体力を回復させるアクション
+    # 休憩
     9: [0, 0.9, 1, 0, 0, 0],  # 簡単な休息、体力を少し回復
     10: [0, 0.7, 3, 0, 0, 0],   # 体力回復メインの休憩、しっかりと休む
     11: [0, 0.5, 5, 0, 0, 0],   # がっつりとした休憩、リスクはあるが体力を大幅回復
+
+    # 何もしない
     12: [0, 1, 0, 0, 0, 0]     # 何もしない
 }
 
@@ -54,7 +56,7 @@ states = [{ (HP, At, Bl, In, Evo, MN): 0
                                                             range(3))}  
             for _ in range(parameters['T'] + 1)]
 
-# 最適行動を記録するための辞書
+# 最適行動を記録するための配列
 policies = [{(HP, At, Bl, In, Evo, MN): None 
             for HP, At, Bl, In, Evo, MN in itertools.product(range(parameters['M_HP_max'] + 1), 
                                                               range(parameters['M_A_max'] + 1), 
@@ -65,7 +67,7 @@ policies = [{(HP, At, Bl, In, Evo, MN): None
             for _ in range(parameters['T'] + 1)]
 
 
-def is_state_null(state) -> bool:
+def is_state_null(state):
     HP, At, Bl, In, Evo, MN = state
     if ( (At >= parameters['T_A'] and Bl >= parameters['T_B'] and In >= parameters['T_I']) and (At >= parameters['E_A'] or Bl >= parameters['E_B'] or In >= parameters['E_I']) ) and Evo == 0:
         return True
@@ -84,9 +86,6 @@ def is_state_null(state) -> bool:
 def is_evolved(current_state, action):
     current_HP, current_At, current_Bl, current_In, current_Evo, current_MN = current_state
     delta_At, delta_Bl, delta_In = action[3:]
-
-    if (current_At >= parameters['E_A'] and current_Bl >= parameters['E_B'] and current_In >= parameters['E_I']):
-        return -1
     
     next_At = min(current_At + delta_At, parameters['M_A_max'])
     next_Bl = min(current_Bl + delta_Bl, parameters['M_B_max'])
@@ -107,11 +106,12 @@ def is_evolved(current_state, action):
 
 def get_next_state(current_state, action, t = parameters["T"]):
     current_HP, current_At, current_Bl, current_In, current_Evo, current_MN = current_state
-    HP_consumption, delta_At, delta_Bl, delta_In = action[0], action[3], action[4], action[5]
+    HP_consumption, delta_HP, delta_At, delta_Bl, delta_In = action[0], action[2], action[3], action[4], action[5]
 
     evolved_status = is_evolved(current_state, action)
     
     next_HP = max(current_HP - HP_consumption, 0)
+    next_HP = min(next_HP + delta_HP, parameters['M_HP_max'])
     next_At = min(current_At + delta_At, parameters['M_A_max'])
     next_Bl = min(current_Bl + delta_Bl, parameters['M_B_max'])
     next_In = min(current_In + delta_In, parameters['M_I_max'])
@@ -125,7 +125,7 @@ def get_next_state(current_state, action, t = parameters["T"]):
     elif evolved_status == 3:
         next_Evo = 3
 
-    if evolved_status == 1 and evolved_status == 2 and evolved_status == 3:
+    if (evolved_status == 1 or evolved_status == 2 or evolved_status == 3) and current_MN == 0:
         if t % 2 != 0:
             next_MN = 1
         else:
@@ -138,8 +138,7 @@ def get_next_state(current_state, action, t = parameters["T"]):
 
 
 def get_next_reward(current_state, action_index, action, t = parameters["T"]):
-    if current_state == (5,7,7,7,0,0) and t == 7:
-        tmp = 0
+    current_Evo = current_state[4]
 
     next_success_reward, next_false_reward = 0, 0
     evolved_status = is_evolved(current_state, action)
@@ -157,6 +156,9 @@ def get_next_reward(current_state, action_index, action, t = parameters["T"]):
             next_success_reward = rewards['RnightB']
         elif evolved_status == 3:
             next_success_reward = rewards['RnightC']
+
+    if current_Evo != 0:
+        next_success_reward = 0
 
     if action_index == 12:
         next_success_reward = rewards['Rnothing']
@@ -189,8 +191,6 @@ for state in states[-1]:
 for t in range(parameters['T'] - 1, 0, -1):
     print(f"{t}期目")
     for state in states[t]:
-        if state == (1,4,6,6,0,0) and t == 7:
-            tmp = 0
         HP = state[0]
         if is_state_null(state):
             continue
@@ -204,10 +204,8 @@ for t in range(parameters['T'] - 1, 0, -1):
             next_success_reward, next_false_reward = get_next_reward(state, i, action, t)
 
             new_value = success_rate * (next_success_reward + parameters['Beta'] * states[t + 1][next_success_state]) + (1 - success_rate) * (next_false_reward + parameters['Beta'] * states[t + 1][next_false_state])
-            tmp = success_rate * (next_success_reward + parameters['Beta'] * states[t + 1][next_success_state])
-            sss = (1 - success_rate) * (next_false_reward + parameters['Beta'] * states[t + 1][next_false_state])
 
-            # 期待利得が最大であれば期待利得と最適行動を更新
+            # 期待総利得が最大であれば期待総利得と最適行動を更新
             if new_value > states[t][state]:
                 states[t][state] = new_value
                 policies[t][state] = i  # 最適行動を記録
@@ -217,10 +215,6 @@ print(policies[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
 
 print(states[7][(5, 5, 3, 2, 0, 0)])
 print(policies[7][(5, 5, 3, 2, 0, 0)])
-
-for i in states[9]:
-    if states[9][i] >= 500:
-        print(states[9][i])
 
 while True:
     t = input("期を入力：")

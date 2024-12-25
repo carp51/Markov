@@ -225,5 +225,5 @@ for t in range(parameters['T'] - 1, 0, -1):
 print(states[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
 print(policies[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
 
-print(states[8][(5, 5, 3, 2, 0, 0)])
-print(policies[8][(5, 5, 3, 2, 0, 0)])
+print(states[7][(5, 5, 3, 2, 0, 0)])
+print(policies[7][(5, 5, 3, 2, 0, 0)])
