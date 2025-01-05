@@ -1,22 +1,28 @@
+# このコードは、生物育成ゲームにおける最適な行動を動的計画法を用いて求めるものです。
+# T期間をさかのぼりながら期待総利得を最大化します。
+# 再帰を使わない方法で期待総利得を求めています。
+
 import itertools
 
 
 parameters = {
-    'T': 10,
-    'M_HP_max': 5,
-    'M_A_max': 10,
-    'M_B_max': 10,
-    'M_I_max': 10,
-    'T_A': 5,
-    'T_B': 5,
-    'T_I': 5,
-    'E_A': 8,
-    'E_B': 8,
-    'E_I': 8,
-    'Beta': 0.95
+    'T': 10,          # 全体の期間
+    'M_HP_max': 5,    # 体力の最大値
+    'M_A_max': 10,    # 攻撃力の最大値
+    'M_B_max': 10,    # 防御力の最大値
+    'M_I_max': 10,    # 賢さの最大値
+    'T_A': 5,         # 進化条件：攻撃力の閾値
+    'T_B': 5,         # 進化条件：防御力の閾値
+    'T_I': 5,         # 進化条件：賢さの閾値
+    'E_A': 8,         # 特定進化の閾値（A）
+    'E_B': 8,         # 特定進化の閾値（B）
+    'E_I': 8,         # 特定進化の閾値（C）
+    'Beta': 0.95      # 割引率
 }
 
 actions = {
+    # 行動の番号: [体力消費量, 成功率, 体力の変化量, 攻撃力の変化量, 防御力の変化量, 賢さの変化量]
+
     # 特訓
     1: [1, 0.85, 0, 2, 0, 0],   # a1: 攻撃力+2
     2: [1, 0.80, 0, 0, 2, 0],   # a2: 防御力+2
@@ -46,7 +52,7 @@ rewards = {
     'Rnothing': 1
 }
 
-# 状態空間を生成
+# 生物の状態空間を生成
 states = [{ (HP, At, Bl, In, Evo, MN): 0 
             for HP, At, Bl, In, Evo, MN in itertools.product(range(parameters['M_HP_max'] + 1), 
                                                             range(parameters['M_A_max'] + 1), 
@@ -68,6 +74,20 @@ policies = [{(HP, At, Bl, In, Evo, MN): None
 
 
 def is_state_null(state):
+    """
+    引数で受けた状態が無効な状態かどうかを判定する関数。
+    もし、無効な状態ならばTrueを返す。
+    
+    例えば、ステータスがA形態の状態なのにB形態に進化していることになっている場合など(5,8,6,6,2,1)。
+
+    無効な状態の例:
+    - 攻撃力、守備力、賢さが進化条件を満たしていないにも関わらず進化済み状態である。
+    - 現在の進化形態とステータス値が一致しない。
+
+    戻り値:
+    - True: 無効な状態
+    - False: 有効な状態
+    """
     HP, At, Bl, In, Evo, MN = state
     if ( (At >= parameters['T_A'] and Bl >= parameters['T_B'] and In >= parameters['T_I']) and (At >= parameters['E_A'] or Bl >= parameters['E_B'] or In >= parameters['E_I']) ) and Evo == 0:
         return True
@@ -84,8 +104,21 @@ def is_state_null(state):
     return False
 
 def is_evolved(current_state, action):
+    """
+    現在の状態で行動が成功した場合にどの進化状態になるかを判定する関数。
+    - current_state: 現在の状態(体力, 攻撃力, 防御力, 賢さ, 進化状態, どの時間帯に進化したか)
+    - action: 実行する行動
+    
+    戻り値:
+    - 進化状態（0: 未進化, 1: A形態, 2: B形態, 3: C形態）
+
+    アクションが成功する前提での進化判定ですので、注意してください。
+    """
     current_HP, current_At, current_Bl, current_In, current_Evo, current_MN = current_state
     delta_At, delta_Bl, delta_In = action[3:]
+
+    if current_Evo != 0:
+        return current_Evo
     
     next_At = min(current_At + delta_At, parameters['M_A_max'])
     next_Bl = min(current_Bl + delta_Bl, parameters['M_B_max'])
@@ -105,6 +138,16 @@ def is_evolved(current_state, action):
 
 
 def get_next_state(current_state, action, t = parameters["T"]):
+    """
+    現在の状態と行動を基に、行動が成功した場合の状態と失敗した場合の状態を返す関数。
+    - current_state: 現在の状態(体力, 攻撃力, 防御力, 賢さ, 進化状態, どの時間帯に進化したか)
+    - action: 実行する行動
+    - t: 期
+
+    戻り値:
+    - next_success_state: 行動が成功した場合の状態
+    - next_false_state:   行動が失敗した場合の状態
+    """
     current_HP, current_At, current_Bl, current_In, current_Evo, current_MN = current_state
     HP_consumption, delta_HP, delta_At, delta_Bl, delta_In = action[0], action[2], action[3], action[4], action[5]
 
@@ -138,6 +181,16 @@ def get_next_state(current_state, action, t = parameters["T"]):
 
 
 def get_next_reward(current_state, action_index, action, t = parameters["T"]):
+    """
+    現在の状態と行動を基に、行動が成功した場合に得られる利得と失敗した場合に得られる利得を返す関数。
+    - current_state: 現在の状態(体力, 攻撃力, 防御力, 賢さ, 進化状態, どの時間帯に進化したか)
+    - action: 実行する行動
+    - t: 期
+
+    戻り値:
+    - next_success_reward: 行動が成功した場合に得られる利得
+    - next_false_reward:   行動が失敗した場合に得られる利得
+    """
     current_Evo = current_state[4]
 
     next_success_reward, next_false_reward = 0, 0
@@ -168,7 +221,7 @@ def get_next_reward(current_state, action_index, action, t = parameters["T"]):
 
 print(f"{parameters['T']}期目")
 # T期目の処理
-for state in states[-1]:
+for state in states[parameters["T"]]:
     HP = state[0]
     if is_state_null(state):
             continue
@@ -180,11 +233,11 @@ for state in states[-1]:
 
         next_success_reward, next_false_reward = get_next_reward(state, i, action)
 
-        new_value = success_rate * next_success_reward + (1 - success_rate) * next_false_reward
+        expected_reward = success_rate * next_success_reward + (1 - success_rate) * next_false_reward
 
         # 期待利得が最大であれば期待利得と最適行動を更新
-        if new_value > states[parameters["T"]][state]:
-            states[parameters["T"]][state] = new_value
+        if expected_reward > states[parameters["T"]][state]:
+            states[parameters["T"]][state] = expected_reward
             policies[parameters["T"]][state] = i  # 最適行動を記録
 
 # T-1期目からさかのぼって計算
@@ -203,18 +256,18 @@ for t in range(parameters['T'] - 1, 0, -1):
             next_success_state, next_false_state = get_next_state(state, action, t)
             next_success_reward, next_false_reward = get_next_reward(state, i, action, t)
 
-            new_value = success_rate * (next_success_reward + parameters['Beta'] * states[t + 1][next_success_state]) + (1 - success_rate) * (next_false_reward + parameters['Beta'] * states[t + 1][next_false_state])
+            expected_reward = success_rate * (next_success_reward + parameters['Beta'] * states[t + 1][next_success_state]) + (1 - success_rate) * (next_false_reward + parameters['Beta'] * states[t + 1][next_false_state])
 
             # 期待総利得が最大であれば期待総利得と最適行動を更新
-            if new_value > states[t][state]:
-                states[t][state] = new_value
+            if expected_reward > states[t][state]:
+                states[t][state] = expected_reward
                 policies[t][state] = i  # 最適行動を記録
 
-print(states[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
-print(policies[1][(parameters['M_HP_max'], 0, 0, 0, 0, 0)])
+print(states[7][(5, 6, 6, 6, 0, 0)])
+print(policies[7][(5, 6, 6, 6, 0, 0)])
 
-print(states[7][(5, 5, 3, 2, 0, 0)])
-print(policies[7][(5, 5, 3, 2, 0, 0)])
+print(states[8][(5, 6, 6, 6, 0, 0)])
+print(policies[8][(5, 6, 6, 6, 0, 0)])
 
 while True:
     t = input("期を入力：")
